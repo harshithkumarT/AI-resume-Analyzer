@@ -1,32 +1,65 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../services/api";
 
 function Login() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData({
-      ...formData,
+    setFormData((previousData) => ({
+      ...previousData,
       [name]: value,
-    });
+    }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    console.log("Login data:", formData);
+    setError("");
+
+    try {
+      setLoading(true);
+
+      const response = await api.post("/auth/login", {
+        email: formData.email,
+        password: formData.password,
+      });
+
+      console.log("Login successful:", response.data);
+
+      localStorage.setItem("token", response.data.token);
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(response.data.user)
+      );
+
+      navigate("/dashboard");
+
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+        "Login failed. Please check your credentials."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
 
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900">
             Welcome Back
@@ -37,10 +70,14 @@ function Login() {
           </p>
         </div>
 
-        {/* Form */}
+        {error && (
+          <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Email */}
           <div>
             <label
               htmlFor="email"
@@ -63,7 +100,6 @@ function Login() {
             />
           </div>
 
-          {/* Password */}
           <div>
             <label
               htmlFor="password"
@@ -86,18 +122,18 @@ function Login() {
             />
           </div>
 
-          {/* Button */}
           <button
             type="submit"
+            disabled={loading}
             className="w-full py-3 bg-indigo-600 text-white
             rounded-lg font-semibold hover:bg-indigo-700
-            transition duration-200"
+            disabled:bg-indigo-300 transition"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
+
         </form>
 
-        {/* Register Link */}
         <p className="text-center text-sm text-slate-500 mt-6">
           Don't have an account?{" "}
           <Link

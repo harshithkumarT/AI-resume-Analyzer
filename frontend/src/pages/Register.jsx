@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../services/api";
 
 function Register() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -9,31 +12,65 @@ function Register() {
     confirmPassword: "",
   });
 
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
 
-    setFormData({
-      ...formData,
+    setFormData((previousData) => ({
+      ...previousData,
       [name]: value,
-    });
+    }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
+    setError("");
+
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      setError("Passwords do not match");
       return;
     }
 
-    console.log("Register data:", formData);
+    try {
+      setLoading(true);
+
+      const response = await api.post("/auth/register", {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      console.log("Registration successful:", response.data);
+
+      // Store JWT temporarily
+      localStorage.setItem("token", response.data.token);
+
+      // Store user information
+      localStorage.setItem(
+        "user",
+        JSON.stringify(response.data.user)
+      );
+
+      // Go to dashboard
+      navigate("/dashboard");
+
+    } catch (error) {
+      setError(
+        error.response?.data?.message ||
+        "Registration failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
 
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900">
             Create Account
@@ -44,10 +81,14 @@ function Register() {
           </p>
         </div>
 
-        {/* Form */}
+        {error && (
+          <div className="mb-5 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Name */}
           <div>
             <label
               htmlFor="name"
@@ -70,7 +111,6 @@ function Register() {
             />
           </div>
 
-          {/* Email */}
           <div>
             <label
               htmlFor="email"
@@ -93,7 +133,6 @@ function Register() {
             />
           </div>
 
-          {/* Password */}
           <div>
             <label
               htmlFor="password"
@@ -117,7 +156,6 @@ function Register() {
             />
           </div>
 
-          {/* Confirm Password */}
           <div>
             <label
               htmlFor="confirmPassword"
@@ -134,25 +172,24 @@ function Register() {
               value={formData.confirmPassword}
               onChange={handleChange}
               required
-              minLength={6}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg
               outline-none focus:ring-2 focus:ring-indigo-500
               focus:border-indigo-500"
             />
           </div>
 
-          {/* Button */}
           <button
             type="submit"
+            disabled={loading}
             className="w-full py-3 bg-indigo-600 text-white
             rounded-lg font-semibold hover:bg-indigo-700
-            transition duration-200"
+            disabled:bg-indigo-300 transition"
           >
-            Create Account
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
+
         </form>
 
-        {/* Login Link */}
         <p className="text-center text-sm text-slate-500 mt-6">
           Already have an account?{" "}
           <Link
